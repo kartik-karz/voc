@@ -121,15 +121,15 @@ public class List extends org.python.types.Object {
                 (other instanceof org.python.types.ByteArray)) {
             org.python.Object iter = null;
             if (other instanceof org.python.types.Str) {
-                iter = ((org.python.types.Str)other).__iter__();
+                iter = ((org.python.types.Str) other).__iter__();
             } else if (other instanceof org.python.types.Dict) {
-                iter = ((org.python.types.Dict)other).__iter__();
+                iter = ((org.python.types.Dict) other).__iter__();
             } else if (other instanceof org.python.types.Range) {
-                iter = ((org.python.types.Range)other).__iter__();
+                iter = ((org.python.types.Range) other).__iter__();
             } else if (other instanceof org.python.types.Bytes) {
-                iter = ((org.python.types.Bytes)other).__iter__();
+                iter = ((org.python.types.Bytes) other).__iter__();
             } else if (other instanceof org.python.types.ByteArray) {
-                iter = ((org.python.types.ByteArray)other).__iter__();
+                iter = ((org.python.types.ByteArray) other).__iter__();
             }
             while (true) {
                 try {
@@ -418,7 +418,12 @@ public class List extends org.python.types.Object {
                 }
                 return new org.python.types.List(sliced);
             } else {
-                int idx = (int) ((org.python.types.Int) index).value;
+                int idx;
+                if (index instanceof org.python.types.Bool) {
+                    idx = (int) ((org.python.types.Bool) index).__int__().value;
+                } else {
+                    idx = (int) ((org.python.types.Int) index).value;
+                }
                 if (idx < 0) {
                     if (-idx > this.value.size()) {
                         throw new org.python.exceptions.IndexError("list index out of range");
@@ -453,7 +458,13 @@ public class List extends org.python.types.Object {
     )
     public void __setitem__(org.python.Object index, org.python.Object value) {
         try {
-            int idx = (int) ((org.python.types.Int) index).value;
+
+            int idx;
+            if (index instanceof org.python.types.Bool) {
+                idx = (int) ((org.python.types.Bool) index).__int__().value;
+            } else {
+                idx = (int) ((org.python.types.Int) index).value;
+            }
             if (idx < 0) {
                 if (-idx > this.value.size()) {
                     throw new org.python.exceptions.IndexError("list assignment index out of range");
@@ -486,7 +497,12 @@ public class List extends org.python.types.Object {
     )
     public void __delitem__(org.python.Object index) {
         try {
-            int idx = (int) ((org.python.types.Int) index).value;
+            int idx;
+            if (index instanceof org.python.types.Bool) {
+                idx = (int) ((org.python.types.Bool) index).__int__().value;
+            } else {
+                idx = (int) ((org.python.types.Int) index).value;
+            }
             if (idx < 0) {
                 if (-idx > this.value.size()) {
                     throw new org.python.exceptions.IndexError("list index out of range");
@@ -661,6 +677,44 @@ public class List extends org.python.types.Object {
             args = {"other"}
     )
     public org.python.Object extend(org.python.Object other) {
+        if (other instanceof org.python.types.List) {
+            this.value.addAll(((org.python.types.List) other).value);
+        } else if (other instanceof org.python.types.FrozenSet) {
+            this.value.addAll(((org.python.types.FrozenSet) other).value);
+        } else if (other instanceof org.python.types.Set) {
+            this.value.addAll(((org.python.types.Set) other).value);
+        } else if (other instanceof org.python.types.Tuple) {
+            this.value.addAll(((org.python.types.Tuple) other).value);
+        } else if (other instanceof org.python.types.Dict) {
+            this.value.addAll(((org.python.types.Dict) other).value.keySet());
+        } else if (
+                (other instanceof org.python.types.Str) ||
+                (other instanceof org.python.types.Range) ||
+                (other instanceof org.python.types.Bytes) ||
+                (other instanceof org.python.types.ByteArray) ||
+                (other instanceof org.python.types.Iterator)) {
+            org.python.Object iter = null;
+            if (other instanceof org.python.types.Str) {
+                iter = ((org.python.types.Str) other).__iter__();
+            } else if (other instanceof org.python.types.Range) {
+                iter = ((org.python.types.Range) other).__iter__();
+            } else if (other instanceof org.python.types.Bytes) {
+                iter = ((org.python.types.Bytes) other).__iter__();
+            } else if (other instanceof org.python.types.ByteArray) {
+                iter = ((org.python.types.ByteArray) other).__iter__();
+            } else if (other instanceof org.python.types.Iterator) {
+                iter = other;
+            }
+            while (true) {
+                try {
+                    this.value.add(iter.__next__());
+                } catch (org.python.exceptions.StopIteration si) {
+                    break;
+                }
+            }
+        } else {
+            throw new org.python.exceptions.TypeError("'" + other.typeName() + "' object is not iterable");
+        }
         return org.python.types.NoneType.NONE;
     }
 

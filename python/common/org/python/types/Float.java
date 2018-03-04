@@ -290,6 +290,11 @@ public class Float extends org.python.types.Object {
                 return new org.python.types.Float(this.value - 1.0);
             }
             return new org.python.types.Float(this.value);
+        } else if (other instanceof org.python.types.Complex) {
+            return new org.python.types.Complex(
+                new org.python.types.Float(this.value - ((org.python.types.Complex) other).real.value),
+                new org.python.types.Float(-((org.python.types.Complex) other).imag.value)
+            );
         }
         throw new org.python.exceptions.TypeError("unsupported operand type(s) for -: 'float' and '" + other.typeName() + "'");
     }
@@ -308,11 +313,15 @@ public class Float extends org.python.types.Object {
             return new org.python.types.Float(((double) this.value) * ((org.python.types.Float) other).value);
         } else if (other instanceof org.python.types.Bool) {
             return new org.python.types.Float(this.value * (((org.python.types.Bool) other).value ? 1 : 0));
+        } else if (other instanceof org.python.types.Complex) {
+            return ((org.python.types.Complex) other).__mul__(this);
         } else if (other instanceof org.python.types.Dict) {
             throw new org.python.exceptions.TypeError("unsupported operand type(s) for *: 'float' and '" + other.typeName() + "'");
         } else if (other instanceof org.python.types.NoneType) {
             throw new org.python.exceptions.TypeError("unsupported operand type(s) for *: 'float' and '" + other.typeName() + "'");
         } else if (other instanceof org.python.types.Set) {
+            throw new org.python.exceptions.TypeError("unsupported operand type(s) for *: 'float' and '" + other.typeName() + "'");
+        } else if (other instanceof org.python.types.FrozenSet) {
             throw new org.python.exceptions.TypeError("unsupported operand type(s) for *: 'float' and '" + other.typeName() + "'");
         } else if (other instanceof org.python.types.List) {
             throw new org.python.exceptions.TypeError("can't multiply sequence by non-int of type 'float'");
@@ -320,6 +329,8 @@ public class Float extends org.python.types.Object {
             throw new org.python.exceptions.TypeError("can't multiply sequence by non-int of type 'float'");
         } else if (other instanceof org.python.types.Slice) {
             throw new org.python.exceptions.TypeError("unsupported operand type(s) for *: 'float' and 'slice'");
+        } else if (other instanceof org.python.types.ByteArray){
+            throw new org.python.exceptions.TypeError("can't multiply sequence by non-int of type 'float'");
         }
 
         throw new org.python.exceptions.NotImplementedError("float.__mul__() has not been implemented.");
@@ -348,6 +359,9 @@ public class Float extends org.python.types.Object {
             } else {
                 throw new org.python.exceptions.ZeroDivisionError("float division by zero");
             }
+        } else if (other instanceof org.python.types.Complex){
+            org.python.types.Complex dummycomplex = new org.python.types.Complex(this.value, 0.0);
+            return dummycomplex.__truediv__((org.python.types.Complex) other);         
         }
         throw new org.python.exceptions.TypeError("unsupported operand type(s) for /: 'float' and '" + other.typeName() + "'");
     }
@@ -384,41 +398,39 @@ public class Float extends org.python.types.Object {
             args = {"other"}
     )
     public org.python.Object __mod__(org.python.Object other) {
-        try {
-            if (other instanceof org.python.types.Bool) {
-                if (((org.python.types.Bool) other).value) {
-                    return new org.python.types.Float(this.value - Math.floor(this.value));
-                } else {
-                    throw new org.python.exceptions.ZeroDivisionError("float modulo");
-                }
-            } else if (other instanceof org.python.types.Int) {
-                long other_val = ((org.python.types.Int) other).value;
-                if (other_val == 0) {
-                    throw new org.python.exceptions.ZeroDivisionError("float modulo");
-                } else {
-                    // Reference: http://stackoverflow.com/a/4412200
-                    // This translates to (a % b + b) %b
-                    // This expression works as the result of (a % b) is necessarily lower than b,
-                    // no matter if a is positive or negative. Adding b takes care of the negative
-                    // values of a, since (a % b) is a negative value between -b and 0, (a % b + b)
-                    // is necessarily lower than b and positive. The last modulo is there in case a
-                    // was positive to begin with, since if a is positive (a % b + b) would become
-                    // larger than b. Therefore, (a % b + b) % b turns it into smaller than b again
-                    // (and doesn't affect negative a values).
-                    double result = (((((double) this.value) % other_val) + other_val) % other_val);
-                    return new org.python.types.Float(result);
-                }
-            } else if (other instanceof org.python.types.Float) {
-                double other_val = ((org.python.types.Float) other).value;
-                if (other_val == 0.0) {
-                    throw new org.python.exceptions.ZeroDivisionError("float modulo");
-                } else {
-                    double result = (((((double) this.value) % other_val) + other_val) % other_val);
-                    return new org.python.types.Float(result);
-                }
+        if (other instanceof org.python.types.Bool) {
+            if (((org.python.types.Bool) other).value) {
+                return new org.python.types.Float(this.value - Math.floor(this.value));
+            } else {
+                throw new org.python.exceptions.ZeroDivisionError("float modulo");
             }
-        } catch (org.python.exceptions.TypeError e) {
-            throw new org.python.exceptions.TypeError("unsupported operand type(s) for %: 'float' and '" + other.typeName() + "'");
+        } else if (other instanceof org.python.types.Int) {
+            long other_val = ((org.python.types.Int) other).value;
+            if (other_val == 0) {
+                throw new org.python.exceptions.ZeroDivisionError("float modulo");
+            } else {
+                // Reference: http://stackoverflow.com/a/4412200
+                // This translates to (a % b + b) %b
+                // This expression works as the result of (a % b) is necessarily lower than b,
+                // no matter if a is positive or negative. Adding b takes care of the negative
+                // values of a, since (a % b) is a negative value between -b and 0, (a % b + b)
+                // is necessarily lower than b and positive. The last modulo is there in case a
+                // was positive to begin with, since if a is positive (a % b + b) would become
+                // larger than b. Therefore, (a % b + b) % b turns it into smaller than b again
+                // (and doesn't affect negative a values).
+                double result = (((((double) this.value) % other_val) + other_val) % other_val);
+                return new org.python.types.Float(result);
+            }
+        } else if (other instanceof org.python.types.Float) {
+            double other_val = ((org.python.types.Float) other).value;
+            if (other_val == 0.0) {
+                throw new org.python.exceptions.ZeroDivisionError("float modulo");
+            } else {
+                double result = (((((double) this.value) % other_val) + other_val) % other_val);
+                return new org.python.types.Float(result);
+            }
+        } else if (other instanceof org.python.types.Complex){
+            throw new org.python.exceptions.TypeError("can't mod complex numbers.");
         }
         throw new org.python.exceptions.TypeError("unsupported operand type(s) for %: 'float' and '" + other.typeName() + "'");
     }
@@ -477,6 +489,10 @@ public class Float extends org.python.types.Object {
             } else {
                 return new org.python.types.Float(1);
             }
+        } else if (other instanceof org.python.types.Complex) {
+            org.python.types.Complex cmplx_obj = new org.python.types.Complex((double) this.value, 0.0);
+            org.python.types.Complex other_cmplx_obj = (org.python.types.Complex) other;
+            return cmplx_obj.__pow__(other_cmplx_obj, null);
         }
         throw new org.python.exceptions.TypeError("unsupported operand type(s) for ** or pow(): 'float' and '" + other.typeName() + "'");
     }

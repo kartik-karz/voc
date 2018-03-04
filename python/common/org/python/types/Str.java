@@ -327,7 +327,11 @@ public class Str extends org.python.types.Object {
                     throw new org.python.exceptions.IndexError("string index out of range");
                 } else {
                     if (slice) {
-                        sliced = this.value.substring(1, 2);
+                        if (this.value.length() < 2) {
+                            throw new org.python.exceptions.IndexError("string index out of range");
+                        } else {
+                            sliced = this.value.substring(1, 2);
+                        }
                     } else {
                         sliced = this.value.substring(0, 1);
                     }
@@ -639,9 +643,10 @@ public class Str extends org.python.types.Object {
                     "handling scheme. Default is 'strict' meaning that encoding errors raise\n" +
                     "a UnicodeEncodeError. Other possible values are 'ignore', 'replace' and\n" +
                     "'xmlcharrefreplace' as well as any other name registered with\n" +
-                    "codecs.register_error that can handle UnicodeEncodeErrors.\n"
+                    "codecs.register_error that can handle UnicodeEncodeErrors.\n",
+            default_args = {"encoding", "errors"}
     )
-    public org.python.Object encode() {
+    public org.python.Object encode(org.python.Object encoding, org.python.Object errors) {
         throw new org.python.exceptions.NotImplementedError("encode() has not been implemented.");
     }
 
@@ -953,7 +958,7 @@ public class Str extends org.python.types.Object {
             return new org.python.types.Bool(false);
         }
         for (char ch : this.value.toCharArray()) {
-            if (" \t\n\r".indexOf(ch) == -1) {
+            if (!isWhitespace(ch)) {
                 return new org.python.types.Bool(false);
             }
         }
@@ -972,12 +977,16 @@ public class Str extends org.python.types.Object {
         if (this.value.isEmpty()) {
             return new org.python.types.Bool(false);
         }
-        for (int c = 1; c < this.value.length(); c++) {
-            if (this.value.charAt(c - 1) == ' ' && !(Character.isUpperCase(this.value.charAt(c)))) {
-                return new org.python.types.Bool(false);
+
+        if (this.value.equals(_title(this.value))) {
+            for (int idx = 0; idx < this.value.length(); idx++) {
+                if (Character.isLetter(this.value.charAt(idx))) {
+                    return new org.python.types.Bool(true);
+                }
             }
         }
-        return new org.python.types.Bool(true);
+
+        return new org.python.types.Bool(false);
     }
 
     @org.python.Method(
@@ -1086,7 +1095,7 @@ public class Str extends org.python.types.Object {
         int start = 0;
         int end = this.value.length();
         if (chars == null || chars instanceof org.python.types.NoneType) {
-            while (start < end && java.lang.Character.isWhitespace(this.value.charAt(start))) {
+            while (start < end && isWhitespace(this.value.charAt(start))) {
                 start++;
             }
         } else if (chars instanceof org.python.types.Str) {
@@ -1336,10 +1345,127 @@ public class Str extends org.python.types.Object {
                     "delimiter string, starting at the end of the string and\n" +
                     "working to the front.  If maxsplit is given, at most maxsplit\n" +
                     "splits are done. If sep is not specified, any whitespace string\n" +
-                    "is a separator.\n"
+                    "is a separator.\n",
+            default_args = {"sep", "maxsplit"}
     )
-    public org.python.Object rsplit() {
-        throw new org.python.exceptions.NotImplementedError("rsplit() has not been implemented.");
+    public org.python.Object rsplit(org.python.Object sep, org.python.Object maxsplit) {
+        if (maxsplit == null) {
+            return this.split(sep, null);
+        }
+        if (this.value.isEmpty()) { //handles empty strings
+            if (sep == null) {
+                if (maxsplit instanceof org.python.types.Int) {
+                    return new org.python.types.List();
+                }
+                throw new org.python.exceptions.TypeError("'" + maxsplit.typeName() + "' cannot be interpreted as an integer");
+            } else if (sep instanceof org.python.types.Str) {
+                if (maxsplit instanceof org.python.types.Int) {
+                    org.python.types.List result_list = new org.python.types.List();
+                    result_list.append(new org.python.types.Str(""));
+                    return result_list;
+                }
+                throw new org.python.exceptions.TypeError("'" + maxsplit.typeName() + "' cannot be interpreted as an integer");
+            }
+        }
+
+        java.lang.String value = this.value.toString();
+        java.lang.String sepStr = "";
+        java.lang.Boolean wspace = false;
+        if (sep == null) {
+            wspace = true;
+        } else if (!(sep instanceof org.python.types.Str)) {
+            if (org.Python.VERSION < 0x03060000) {
+                throw new org.python.exceptions.TypeError("Can't convert '" + sep.typeName() + "' object to str implicitly");
+            } else {
+                throw new org.python.exceptions.TypeError("must be str or None, not " + sep.typeName());
+            }
+        } else {
+            sepStr = ((org.python.types.Str) sep).toString();
+        }
+
+        org.python.types.List result_list = new org.python.types.List();
+        if (wspace) {    //handles whitespace delimiters (default case)
+            value = value.replaceAll("\\s++$", ""); //trim trailing spaces
+            int temp = value.length() - 1, j = value.length() - 1;
+            int count = 0, number = 0;
+            for (int i = 0; i < value.length(); i++) {   //count number of whitespace sequences
+                if (value.charAt(i) == ' ') {
+                    while (value.charAt(i) == ' ') {
+                        i++;
+                    }
+                    count++;
+                }
+            }
+            if (java.lang.Integer.parseInt(maxsplit.toString()) >= 0) {
+                number = java.lang.Integer.parseInt(maxsplit.toString());  //check for positive maxsplit
+            } else {
+                number = count;
+            }
+            int numEnd = 0;
+            if (number > count) { //prevent going out of bounds later
+                numEnd = number - count;
+            }
+            for (int i = number; i > numEnd; i--) {
+                java.lang.StringBuilder sb = new StringBuilder();
+                for (j = temp; j >= 0; j--) {
+                    if (value.charAt(j) == ' ') {
+                        while (value.charAt(j) == ' ' && j != 0) {
+                            j--;
+                        }
+                        temp = j;
+                        result_list.insert(new org.python.types.Int(0), new org.python.types.Str(sb.toString()));
+                        break;
+                    } else {
+                        sb.insert(0, value.charAt(j));
+                    }
+                }
+            }
+            if (j != 0) {
+                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value.substring(0, j + 1)));
+            } else if (j == 0 && value.charAt(j) != ' ') {
+                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value.substring(0, 1)));
+            }
+        } else {  //handles non-whitespace and non-default whitespace delimiters (Ex. rsplit("e",12) rsplit(" ",2))
+            int lastIndex = 0, count = 0, number = 0;
+            while (lastIndex != -1) {
+                lastIndex = value.indexOf(sepStr, lastIndex);
+                if (lastIndex != -1) {
+                    count++;
+                    lastIndex += sepStr.length();
+                }
+            }
+            if (count == 0) {
+                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value));  //if no matches found, simply return array containing original string
+            } else {
+                int numEnd = 0;
+                if (java.lang.Integer.parseInt(maxsplit.toString()) >= 0) {
+                    number = java.lang.Integer.parseInt(maxsplit.toString());
+                } else {
+                    number = count;
+                }
+                if (number > count) {
+                    numEnd = number - count;
+                }
+                int temp = value.length(), j = 0;
+                for (int i = number; i > numEnd; i--) {
+                    for (j = temp; j >= 0; j--) {
+                        if (value.substring(j, temp).contains(sepStr)) {
+                            if (i == 0) {   //prevent going over string bounds
+                                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value.substring(j + sepStr.length(), value.length())));
+                                temp = j;
+                                j--;
+                            } else {
+                                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value.substring(j + sepStr.length(), temp)));
+                                temp = j;
+                            }
+                            break;
+                        }
+                    }
+                }
+                result_list.insert(new org.python.types.Int(0), new org.python.types.Str(value.substring(0, j)));
+            }
+        }
+        return result_list;
     }
 
     @org.python.Method(
@@ -1353,7 +1479,7 @@ public class Str extends org.python.types.Object {
         int start = 0;
         int end = this.value.length();
         if (chars == null || chars instanceof org.python.types.NoneType) {
-            while (end > start && java.lang.Character.isWhitespace(this.value.charAt(end - 1))) {
+            while (end > start && isWhitespace(this.value.charAt(end - 1))) {
                 end--;
             }
         } else if (chars instanceof org.python.types.Str) {
@@ -1394,8 +1520,10 @@ public class Str extends org.python.types.Object {
             }
         }
 
+        java.lang.String value = this.value.toString();
         if (sep == null) {
-            sep = new org.python.types.Str(" ");
+            value = value.trim();
+            sep = new org.python.types.Str("\\s+");
         } else if (!(sep instanceof org.python.types.Str)) {
             if (org.Python.VERSION < 0x03060000) {
                 throw new org.python.exceptions.TypeError("Can't convert '" + sep.typeName() + "' object to str implicitly");
@@ -1406,10 +1534,10 @@ public class Str extends org.python.types.Object {
 
         java.lang.String[] result;
         if (maxsplit == null) {
-            result = this.value.toString().split(((org.python.types.Str) sep).toString());
+            result = value.split(((org.python.types.Str) sep).toString());
         } else {
             int number = java.lang.Integer.parseInt(maxsplit.toString());
-            result = this.value.toString().split(((org.python.types.Str) sep).toString(), number + 1);
+            result = value.split(((org.python.types.Str) sep).toString(), number + 1);
         }
         org.python.types.List result_list = new org.python.types.List();
         for (java.lang.String w : result) {
@@ -1434,6 +1562,26 @@ public class Str extends org.python.types.Object {
             case '\u0085':
             case '\u2028':
             case '\u2029':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isWhitespace(char character) {
+        // Compared to Java, Python does not consider U+180E as whitespace,
+        // but it does U+0085, U+00A0, U+2007, and U+202F.
+        if (character == '\u180E') {
+            return false;
+        }
+        if (Character.isWhitespace(character)) {
+            return true;
+        }
+        switch (character) {
+            case '\u0085':
+            case '\u00A0':
+            case '\u2007':
+            case '\u202F':
                 return true;
             default:
                 return false;
@@ -1563,6 +1711,27 @@ public class Str extends org.python.types.Object {
         return new org.python.types.Str(swapcase.toString());
     }
 
+    public static String _title(String input) {
+        if (input.isEmpty()) {
+            return input;
+        }
+
+        java.lang.StringBuffer title = new java.lang.StringBuffer();
+        title.append(Character.toUpperCase(input.charAt(0)));
+        for (int c = 1; c < input.length(); c++) {
+            if (!(Character.isLetter(title.charAt(c - 1)))) {
+                title.append(Character.toUpperCase(input.charAt(c)));
+            } else if (Character.isUpperCase(input.charAt(c))) {
+                title.append(Character.toLowerCase(input.charAt(c)));
+            } else {
+                title.append(input.charAt(c));
+            }
+        }
+
+        return title.toString();
+    }
+
+
     @org.python.Method(
             __doc__ = "S.title() -> str\n" +
                     "\n" +
@@ -1570,21 +1739,7 @@ public class Str extends org.python.types.Object {
                     "characters, all remaining cased characters have lower case.\n"
     )
     public org.python.Object title() {
-        if (this.value.isEmpty()) {
-            return new org.python.types.Str(this.value);
-        }
-        java.lang.StringBuffer title = new java.lang.StringBuffer();
-        title.append(Character.toUpperCase(this.value.charAt(0)));
-        for (int c = 1; c < this.value.length(); c++) {
-            if (title.charAt(c - 1) == ' ') {
-                title.append(Character.toUpperCase(this.value.charAt(c)));
-            } else if (Character.isUpperCase(this.value.charAt(c))) {
-                title.append(Character.toLowerCase(this.value.charAt(c)));
-            } else {
-                title.append(this.value.charAt(c));
-            }
-        }
-        return new org.python.types.Str(title.toString());
+        return new org.python.types.Str(_title(this.value));
     }
 
     @org.python.Method(
@@ -1609,8 +1764,46 @@ public class Str extends org.python.types.Object {
     public org.python.Object upper() {
         return new org.python.types.Str(this.value.toUpperCase());
     }
-}
 
+    @org.python.Method(
+            __doc__ = "S.zfill() -> str\n" +
+                    "\n" +
+                    "Return a copy of the string left filled with ASCII '0' \n" +
+                    "digits to make a string of length width.\n",
+            args = {"width"}
+    )
+    public org.python.Object zfill(org.python.Object width) {
+
+
+        if (width instanceof org.python.types.Float) {
+            throw new org.python.exceptions.TypeError("integer argument expected, got float");
+        } else if (!(width instanceof org.python.types.Int)) {
+            throw new org.python.exceptions.TypeError("'" + org.Python.typeName(width.getClass()) +
+                                                      "' object cannot be interpreted as an integer");
+        }
+
+        int w = (int) ((org.python.types.Int) width).value;
+
+        if (this.value.length() >= w) {
+            return new org.python.types.Str(this.value);
+        }
+
+        int fill = w - this.value.length();
+
+        java.lang.StringBuffer str = new java.lang.StringBuffer(w);
+
+        if (this.value.length() != 0 && (this.value.charAt(0) == '-' || this.value.charAt(0) == '+')) {
+            str.append(this.value.charAt(0));
+            this.value = this.value.substring(1);
+        }
+
+        for (int i = 0; i < fill; i++) {
+            str.append('0');
+        }
+
+        return new org.python.types.Str(str.toString() + this.value);
+    }
+}
 
 final class PythonFormatter {
 
@@ -1673,17 +1866,17 @@ final class PythonFormatter {
     /*############################# =- Private -= ############################*/
     /*--- Private constructor  -----------------------------------------------*/
     private PythonFormatter(java.lang.String formatString, java.util.List<org.python.Object> args) {
-        this.formatString   = formatString;
-        this.args           = args;
-        this.kwargs         = null;
+        this.formatString = formatString;
+        this.args = args;
+        this.kwargs = null;
 
         fillCharacterQueue();
     }
 
     private PythonFormatter(java.lang.String formatString, java.util.Map<org.python.Object, org.python.Object> kwargs) {
-        this.formatString   = formatString;
-        this.args           = new java.util.LinkedList<>();
-        this.kwargs         = kwargs;
+        this.formatString = formatString;
+        this.args = new java.util.LinkedList<>();
+        this.kwargs = kwargs;
 
         // necessary for certain edge cases
         this.args.add(new org.python.types.Dict(kwargs));
@@ -1691,9 +1884,9 @@ final class PythonFormatter {
     }
 
     private PythonFormatter(java.lang.String formatString, org.python.Object arg) {
-        this.formatString   = formatString;
-        this.args           = new java.util.LinkedList<>();
-        this.kwargs         = null;
+        this.formatString = formatString;
+        this.args = new java.util.LinkedList<>();
+        this.kwargs = null;
 
         this.singleValueIsAllowed = arg instanceof org.python.types.Bytes
                                  || arg instanceof org.python.types.ByteArray
@@ -2361,11 +2554,9 @@ final class PythonFormatter {
     private java.lang.Integer currentArgumentIndex = 0;
     private boolean singleValueIsAllowed = false;
 
-
-
     /*############################ =- Constants -= ###########################*/
     public static final java.lang.Long DEFAULT_MINIMUM_WIDTH = 0L;
-    public static final java.lang.Long DEFAULT_PRECSION =  6L;
+    public static final java.lang.Long DEFAULT_PRECSION = 6L;
     public static final java.lang.Long PRECSION_NOT_SET = -1L;
 
     public static final char SIGN_POSITIV = '-';

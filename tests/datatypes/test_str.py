@@ -28,8 +28,9 @@ class StrTests(TranspileTestCase):
             """)
 
     def test_isspace(self):
-        self.assertCodeExecution("""
-            for s in ['''  \t \r''', ' ', '\t\tnope\t\t', '']:
+        self.assertCodeExecution(r"""
+            for s in ['\x1f \v \f \n \t \r', ' ', '\x85\xa0', '\u2007', '\u202f',
+            '\u180e', '\t\tnope\t\t', '']:
                 print(s.isspace())
             """)
 
@@ -55,10 +56,17 @@ class StrTests(TranspileTestCase):
             """)
 
     def test_istitle(self):
-        self.assertCodeExecution("""
-            for s in ['Hello World', 'hello wORLd.', 'Hello world.', '']:
-                print(s.istitle())
-            """)
+        self.assertCodeExecution(r"""
+            print("".istitle())
+            print("abcd".istitle())
+            print("NOT".istitle())
+            print("coca cola".istitle())
+            print("they are from UK, are they not?".istitle())
+            print("/@.".istitle())
+            print("\u00c4".istitle())
+            print("\x41".istitle())
+            print("py.bee".istitle())
+        """)
 
     def test_join(self):
         self.assertCodeExecution("""
@@ -231,8 +239,8 @@ class StrTests(TranspileTestCase):
             """)
 
     def test_split(self):
-        self.assertCodeExecution("""
-            for s in ['hello, world', 'HEllo, WORLD', 'átomo', '']:
+        self.assertCodeExecution(r"""
+            for s in ['\vhello,        world', '\nHEllo, WORLD\f', 'átomo', '']:
                 print(s.split())
                 print(s.split("o"))
                 print(s.split(maxsplit=2))
@@ -241,6 +249,7 @@ class StrTests(TranspileTestCase):
                     print(s.split(5))
                 except TypeError as err:
                     print(err)
+
             """)
 
     def test_index(self):
@@ -387,9 +396,16 @@ class StrTests(TranspileTestCase):
             """)
 
     def test_title(self):
-        self.assertCodeExecution("""
-            s = ' foo  bar    baz '
-            print(s.title())
+        self.assertCodeExecution(r"""
+            print("".title())
+            print("abcd".title())
+            print("NOT".title())
+            print("coca cola".title())
+            print("they are from UK, are they not?".title())
+            print("/@.".title())
+            print("\u00c4".title())
+            print("\x41".title())
+            print("py.bee".title())
         """)
 
     def test_len(self):
@@ -472,6 +488,13 @@ class StrTests(TranspileTestCase):
             print(str.lstrip('ab'))
             """)
 
+        self.assertCodeExecution(r"""
+            str="\u180eabc"
+            print(str.lstrip())
+            str="\x85abc"
+            print(str.lstrip())
+            """)
+
     def test_rstrip(self):
         self.assertCodeExecution("""
             str = " fooggg\t\t   "
@@ -494,6 +517,13 @@ class StrTests(TranspileTestCase):
             str=""
             print(str.rstrip())
             print(str.rstrip('ab'))
+            """)
+
+        self.assertCodeExecution(r"""
+            str="abc\u180e"
+            print(str.rstrip())
+            str="abc\x85"
+            print(str.rstrip())
             """)
 
     def test_rfind(self):
@@ -684,6 +714,21 @@ class StrTests(TranspileTestCase):
                 print(err)
             """)
 
+    def test_rsplit(self):
+        self.assertCodeExecution(r"""
+           for s in ['This is for rsplit',' eeed d ded  eded   ','átomo','',' t e s t i n g   r s p l i t ','a b c']:
+                print(s.rsplit())
+                print(s.rsplit("e"))
+                print(s.rsplit(maxsplit=2))
+                print(s.rsplit(maxsplit=-5))
+                print(s.rsplit("e",-9))
+                print(s.rsplit(" ", -10))
+                try:
+                    print(s.split(2))
+                except TypeError as err:
+                    print(err)
+            """)
+
     def test_isnumeric(self):
         self.assertCodeExecution("""
         for str_ in ['123', '123.4', 'abc', '', ' ', 'ABCD', 'ABCD ', '12323445',
@@ -734,6 +779,41 @@ class StrTests(TranspileTestCase):
         print(s1.splitlines(True))
         """)
 
+    def test_zfill(self):
+        self.assertCodeExecution("""
+            s = '42'
+            print(s.zfill(5))
+
+            try:
+                print(s.zfill('string'))
+            except TypeError as err:
+                print(err)
+
+            try:
+                print(s.zfill({}))
+            except TypeError as err:
+                print(err)
+
+            s = '-42'
+            print(s.zfill(5))
+
+            s = '+42'
+            print(s.zfill(5))
+
+            s = ''
+            print(s.zfill(5))
+
+            s = '-.-42'
+            print(s.zfill(6))
+        """)
+
+    @expectedFailure
+    def test_zfill_arg_handling(self):
+        self.assertCodeExecution("""
+            s = "42"
+            s.zfill()
+        """)
+
 
 class UnaryStrOperationTests(UnaryOperationTestCase, TranspileTestCase):
     data_type = 'str'
@@ -744,8 +824,6 @@ class BinaryStrOperationTests(BinaryOperationTestCase, TranspileTestCase):
 
     not_implemented = [
         'test_modulo_class',
-
-        'test_subscr_bool',
         'test_subscr_slice',
     ]
 
