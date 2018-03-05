@@ -762,7 +762,8 @@ public class ByteArray extends org.python.types.Object {
             __doc__ = "B.isalnum() -> bool\n\nReturn True if all characters in B are alphanumeric\nand there is at least one character in B, False otherwise."
     )
     public org.python.Object isalnum(java.util.List<org.python.Object> args, java.util.Map<java.lang.String, org.python.Object> kwargs, java.util.List<org.python.Object> default_args, java.util.Map<java.lang.String, org.python.Object> default_kwargs) {
-        throw new org.python.exceptions.NotImplementedError("bytearray.isalnum has not been implemented.");
+
+        return new Bool(Bytes._isalnum(this.value));
     }
 
     @org.python.Method(
@@ -776,27 +777,8 @@ public class ByteArray extends org.python.types.Object {
             __doc__ = "B.isdigit() -> bool\n\nReturn True if all characters in B are digits\nand there is at least one character in B, False otherwise."
     )
     public org.python.Object isdigit(java.util.List<org.python.Object> args, java.util.Map<java.lang.String, org.python.Object> kwargs, java.util.List<org.python.Object> default_args, java.util.Map<java.lang.String, org.python.Object> default_kwargs) {
-        // throw new org.python.exceptions.NotImplementedError("bytearray.isdigit has not been implemented.");
-        if(this.value.length==0){
-          return new org.python.types.Bool(0);
-        }
-        char charByte;
-        boolean charFlag = false;
-        for(byte bt: this.value){
-          charByte = (char) bt;
-          if(Character.isDigit(charByte)){
-            continue;
-          }
-          else{
-            charFlag = true;
-          }
-        }
-        if(charFlag){
-          return new org.python.types.Bool(0);
-        }
-        else{
-          return new org.python.types.Bool(1);
-        }
+
+      return new Bool(Bytes._isdigit(this.value));
     }
 
     @org.python.Method(
