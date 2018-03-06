@@ -108,6 +108,33 @@ class BytearrayTests(TranspileTestCase):
             print(bytearray(b'hello world   ').isalpha())
         """)
 
+    def test_isalnum(self):
+        self.assertCodeExecution("""
+            print(b'w1thnumb3r2'.isalnum())
+            print(b'withoutnumber'.isalnum())
+            print(b'with spaces'.isalnum())
+            print(b'666'.isalnum())
+            print(b'66.6'.isalnum())
+            print(b' '.isalnum())
+            print(b''.isalnum())
+            print(b'/@. test'.isalnum())
+            print(b'\x46\x55\x43\x4B'.isalnum())
+        """)
+
+
+    def test_isdigit(self):
+        self.assertCodeExecution("""
+            print(b'testdigit'.isdigit())
+            print(b'TestDigit'.isdigit())
+            print(b'test digit'.isdigit())
+            print(b'666'.isdigit())
+            print(b'66.6'.isdigit())
+            print(b' '.isdigit())
+            print(b''.isdigit())
+            print(b'/@. test'.isdigit())
+            print(b'\x46\x55\x43\x4B'.isdigit())
+        """)
+
     def test_isupper(self):
         self.assertCodeExecution("""
             print(bytearray(b'abc').isupper())

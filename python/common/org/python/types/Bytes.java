@@ -1048,7 +1048,7 @@ public class Bytes extends org.python.types.Object {
     }
 
     public static boolean _isalnum(byte ch){
-      return _isalpha(ch) && _isdigit(ch) ;
+      return _isalpha(ch) || _isdigit(ch) ;
     }
 
     public static boolean _isalnum(byte[] input){
@@ -1119,13 +1119,7 @@ public class Bytes extends org.python.types.Object {
     )
 
     public org.python.Object isdigit() {
-        if (this.value.length == 0) {
-            return new org.python.types.Bool(false);
-        }
-        for (byte ch : this.value) {
-            return new Bool(_isdigit(ch));
-        }
-        return new org.python.types.Bool(true);
+      return new Bool(_isdigit(this.value));
     }
 
     public static boolean _islower(byte[] input) {
